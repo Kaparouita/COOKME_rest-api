@@ -1,41 +1,64 @@
 package main
 
 import (
-	"fmt"
-	"io"
-	"net/http"
-	"strings"
+	"encoding/json"
+	"io/ioutil"
+	"log"
+	"rest-api/models"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
-  url := "https://google.serper.dev/search"
-  method := "POST"
+	// db := repositories.NewDbRepo()
+	// userDb := repositories.NewUserDb(db)
+	// userService := core.NewUserService(userDb)
+	// userHandler := handlers.NewUserHandler(userService)
 
-  payload := strings.NewReader(`{"q":"Tomato Xalkiadakis","gl":"gr"}`)
+	// server := server.NewService(userHandler)
 
-  client := &http.Client {
-  }
-  req, err := http.NewRequest(method, url, payload)
+	rJson, err := unMarshalRecipes("recipes.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	recipes := models.TranformRecipes(rJson)
 
-  if err != nil {
-    fmt.Println(err)
-    return
-  }
-  req.Header.Add("X-API-KEY", "b91571be77615909bc89930b2008a450a9132d69")
-  req.Header.Add("Content-Type", "application/json")
+	uniqueCousines := make(map[string]bool)
 
-  res, err := client.Do(req)
-  if err != nil {
-    fmt.Println(err)
-    return
-  }
-  defer res.Body.Close()
+	for _, recipe := range recipes {
+		uniqueCousines[recipe.Cuisine] = true
+	}
 
-  body, err := io.ReadAll(res.Body)
-  if err != nil {
-    fmt.Println(err)
-    return
-  }
-  fmt.Println(string(body))
+	file := "uniqueCousines.txt"
+
+	data := []byte("Unique Cousines\n")
+	for k := range uniqueCousines {
+		data = append(data, []byte(k+"\n")...)
+	}
+
+	err = ioutil.WriteFile(file, data, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// server.Initialize()
+}
+
+func unMarshalRecipes(file string) ([]models.RecipeJson, error) {
+	var recipes []models.RecipeJson
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(data, &recipes)
+	if err != nil {
+		return nil, err
+	}
+
+	return recipes, nil
 }
