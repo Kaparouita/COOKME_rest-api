@@ -35,8 +35,8 @@ type RecipeDb interface {
 }
 
 type RecipeService interface {
-	SaveRecipe(*models.Recipe) error
-	SaveRecipes([]models.Recipe) error
+	SaveRecipe(*models.Recipe) *models.Response
+	SaveRecipes([]models.Recipe) *models.Response
 	GetRecipe(uint) *models.Recipe
 	GetRecipes() []*models.Recipe
 }

@@ -2,9 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
+	"rest-api/core"
 	"rest-api/models"
+	"rest-api/repositories"
 
 	"github.com/joho/godotenv"
 )
@@ -15,37 +18,28 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	// db := repositories.NewDbRepo()
+	db := repositories.NewDbRepo()
 	// userDb := repositories.NewUserDb(db)
 	// userService := core.NewUserService(userDb)
 	// userHandler := handlers.NewUserHandler(userService)
-
 	// server := server.NewService(userHandler)
 
-	rJson, err := unMarshalRecipes("recipes.json")
-	if err != nil {
-		log.Fatal(err)
+	recipeDb := repositories.NewRecipeDb(db)
+	recipeService := core.NewRecipeService(recipeDb)
+
+	// rJson, err := unMarshalRecipes("recipes.json")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// recipes := models.TranformRecipes(rJson)
+
+	recipes := recipeService.GetRecipes()
+	for i, recipe := range recipes {
+		fmt.Println(recipe)
+		if i == 200 {
+			break
+		}
 	}
-	recipes := models.TranformRecipes(rJson)
-
-	uniqueCousines := make(map[string]bool)
-
-	for _, recipe := range recipes {
-		uniqueCousines[recipe.Cuisine] = true
-	}
-
-	file := "uniqueCousines.txt"
-
-	data := []byte("Unique Cousines\n")
-	for k := range uniqueCousines {
-		data = append(data, []byte(k+"\n")...)
-	}
-
-	err = ioutil.WriteFile(file, data, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// server.Initialize()
 }
 
