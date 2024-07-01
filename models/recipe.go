@@ -1,11 +1,13 @@
 package models
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/lib/pq"
+	"gorm.io/datatypes"
 )
 
 type Article struct {
@@ -49,21 +51,21 @@ type FinalRecipe struct {
 }
 
 type Recipe struct {
-	Id            uint               `json:"id" gorm:"primaryKey"`
-	Description   string             `json:"description"`
-	CookingTime   int                `json:"cooking_time"`
-	PrepTime      int                `json:"prep_time"`
-	Serves        int                `json:"serves"`
-	Keywords      pq.StringArray     `json:"keywords,omitempty" gorm:"type:varchar[]"`
-	Ratings       int                `json:"ratings"`
-	NutritionInfo map[string]float64 `gorm:"type:jsonb" json:"nutrition_info,omitempty"`
-	Ingredients   pq.StringArray     `json:"ingredients,omitempty" gorm:"type:varchar[]"`
-	Courses       pq.StringArray     `json:"courses,omitempty" gorm:"type:varchar[]"`
-	Cuisine       string             `json:"cusine"`
-	SkillLevel    string             `json:"skill_level"`
-	PostDates     string             `json:"post_dates"`
-	Title         string             `json:"title"`
-	Image         string             `json:"image"`
+	Id            uint           `json:"id" gorm:"primaryKey"`
+	Description   string         `json:"description"`
+	CookingTime   int            `json:"cooking_time"`
+	PrepTime      int            `json:"prep_time"`
+	Serves        int            `json:"serves"`
+	Keywords      pq.StringArray `json:"keywords,omitempty" gorm:"type:varchar[]"`
+	Ratings       int            `json:"ratings"`
+	NutritionInfo datatypes.JSON `gorm:"type:jsonb" json:"nutrition_info,omitempty"`
+	Ingredients   pq.StringArray `json:"ingredients,omitempty" gorm:"type:varchar[]"`
+	Courses       pq.StringArray `json:"courses,omitempty" gorm:"type:varchar[]"`
+	Cuisine       string         `json:"cusine"`
+	SkillLevel    string         `json:"skill_level"`
+	PostDates     string         `json:"post_dates"`
+	Title         string         `json:"title"`
+	Image         string         `json:"image"`
 }
 
 func (r *RecipeJson) TranformToRecipe() *Recipe {
@@ -89,6 +91,8 @@ func (r *RecipeJson) TranformToRecipe() *Recipe {
 		}
 	}
 
+	nutritionInfoJson, _ := json.Marshal(nutritionInfo)
+
 	return &Recipe{
 		Description:   r.Article.Description,
 		CookingTime:   r.RecipeInfo.CookingTime,
@@ -96,7 +100,7 @@ func (r *RecipeJson) TranformToRecipe() *Recipe {
 		Serves:        r.RecipeInfo.Serves,
 		Keywords:      r.RecipeInfo.Keywords,
 		Ratings:       r.RecipeInfo.Ratings,
-		NutritionInfo: nutritionInfo,
+		NutritionInfo: nutritionInfoJson,
 		Ingredients:   r.RecipeInfo.Ingredients,
 		Courses:       r.RecipeInfo.Courses,
 		Cuisine:       r.RecipeInfo.Cuisine,
@@ -105,6 +109,12 @@ func (r *RecipeJson) TranformToRecipe() *Recipe {
 		Title:         r.Title,
 		Image:         r.Image,
 	}
+}
+
+func (r *Recipe) UnmarshalNutritionInfo() (map[string]float64, error) {
+	var nutritionInfo map[string]float64
+	err := json.Unmarshal(r.NutritionInfo, &nutritionInfo)
+	return nutritionInfo, err
 }
 
 func extractNutritionValue(info string) (string, float64) {

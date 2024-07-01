@@ -14,22 +14,15 @@ type User struct {
 	Email     string    `json:"email" gorm:"uniqueIndex"`    // Email (un)
 	Gender    string    `json:"gender"`
 	UserType  string    `json:"user_type"` // Type (admin/user/IngridientAdmin)
-	Address   Address   `json:"address" gorm:"constraint:OnDelete:CASCADE;"`
+	Address   string    `json:"address"`
 	Phone     string    `json:"phone"`
 	URL       string    `json:"url"` // URL (fb / insta)
+	Longitude float64   `json:"longitude"`
+	Latitude  float64   `json:"latitude"`
 	Response
 }
 
-type Address struct {
-	Id      uint   `json:"id" gorm:"primaryKey"`
-	UserId  string `json:"user_id"`
-	Town    string `json:"town"`
-	Country string `json:"country"`
-	Road    string `json:"road"`
-	Number  uint   `json:"number"`
-}
-
 type LoginResp struct {
-	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }

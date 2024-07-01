@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -42,9 +43,47 @@ func connectDb() (*gorm.DB, error) {
 	//Create the tables
 	db.AutoMigrate(
 		&models.User{},
-		&models.Address{},
 		&models.Recipe{},
+		&models.Keyword{},
+		&models.MarketIngredient{},
 	)
 
+	// Insert the keywords
+	// dbRepo := &Db{db}
+	// err = dbRepo.insertKeywords("uniqueKeywords.txt")
+
 	return db, nil
+}
+
+func (db *Db) insertKeywords(path string) error {
+	// Open the file
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Read the file
+	keywords := make([]models.Keyword, 0)
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		keyword := models.Keyword{
+			Keyword: scanner.Text(),
+		}
+		keywords = append(keywords, keyword)
+	}
+
+	// Insert the keywords
+	for _, keyword := range keywords {
+		db.Create(&keyword)
+	}
+
+	return nil
+}
+
+func (db *Db) GetAllKeywords() []models.Keyword {
+	var keywords []models.Keyword
+	db.Find(&keywords)
+	return keywords
 }

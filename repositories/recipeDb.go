@@ -1,8 +1,11 @@
 package repositories
 
 import (
-	"encoding/json"
+	"bufio"
+	"fmt"
+	"os"
 	"rest-api/models"
+	"strings"
 )
 
 type RecipeDb struct {
@@ -17,7 +20,7 @@ func NewRecipeDb(db *Db) *RecipeDb {
 
 type RecipeResp struct {
 	models.Recipe
-	NutritionInfoJson js
+	// NutritionInfoJson js
 }
 
 // SaveRecipe saves a recipe to the database.
@@ -40,15 +43,101 @@ func (db *RecipeDb) GetRecipe(id uint) *models.Recipe {
 	if err := db.Db.First(&recipe, id).Error; err != nil {
 		return nil
 	}
+	recipe.UnmarshalNutritionInfo()
 	return &recipe
 }
 
 func (db *RecipeDb) GetRecipes() []*models.Recipe {
 	var recipes []*models.Recipe
-	db.Db.Find(&recipes)
+	err := db.Db.Find(&recipes).Error
+	if err != nil {
+		return nil
+	}
+
+	for _, recipe := range recipes {
+		recipe.UnmarshalNutritionInfo()
+	}
 	return recipes
 }
 
-func unMarshalRecipeNutrition(recipe *models.Recipe) {
-	recipe.NutritionInfo = json.Unmarshal(recipe.NutritionInfo)
+func (db *RecipeDb) GetRecipesByCousines(cuisines []string) []*models.Recipe {
+	var recipes []*models.Recipe
+	fmt.Println("Retrieving recipes by cuisines : ", cuisines)
+	err := db.Db.Where("cuisine IN (?)", cuisines).Find(&recipes).Error
+	if err != nil {
+		return nil
+	}
+
+	for _, recipe := range recipes {
+		recipe.UnmarshalNutritionInfo()
+	}
+	return recipes
+}
+
+func (db *RecipeDb) GetRecipesByKeywords(keywords string) []*models.Recipe {
+	var recipes []*models.Recipe
+	fmt.Println("Retrieving recipes by keywords:", keywords)
+
+	keywordArray := "{" + keywords + "}"
+
+	// Execute the query
+	err := db.Db.Where("keywords && ?", keywordArray).Find(&recipes).Error
+	if err != nil {
+		fmt.Println("Error retrieving recipes:", err)
+		return nil
+	}
+
+	for _, recipe := range recipes {
+		recipe.UnmarshalNutritionInfo()
+	}
+	return recipes
+}
+
+func (db *RecipeDb) GetAllKeywords() []models.Keyword {
+	var keywords []models.Keyword
+	err := db.Db.Find(&keywords).Error
+	if err != nil {
+		return nil
+	}
+	return keywords
+}
+
+func (db *RecipeDb) GetMarketIngredientForAllMarkets(ingredient string) []models.MarketIngredient {
+	var marketIngredients []models.MarketIngredient
+	err := db.Db.Where("name = ?", ingredient).Find(&marketIngredients).Error
+	if err != nil {
+		return nil
+	}
+
+	return marketIngredients
+}
+
+func (db *RecipeDb) AddMarketIngredientsFromFile(path, market string) error {
+	// Open the file
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	// Read the file line by line Ingredient,Price
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		// Split the line into ingredient and price
+		parts := strings.Split(scanner.Text(), ",")
+		if len(parts) != 2 {
+			continue
+		}
+		ingredient := models.MarketIngredient{
+			Name:   parts[0],
+			Price:  parts[1],
+			Market: market,
+		}
+		// Insert the ingredient
+		db.Db.Create(&ingredient)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	return nil
 }

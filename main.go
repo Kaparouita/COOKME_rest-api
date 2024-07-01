@@ -1,13 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"rest-api/core"
-	"rest-api/models"
+	"rest-api/handlers"
 	"rest-api/repositories"
+	"rest-api/server"
 
 	"github.com/joho/godotenv"
 )
@@ -19,40 +18,26 @@ func main() {
 	}
 
 	db := repositories.NewDbRepo()
-	// userDb := repositories.NewUserDb(db)
-	// userService := core.NewUserService(userDb)
-	// userHandler := handlers.NewUserHandler(userService)
-	// server := server.NewService(userHandler)
 
+	// User
+	userDb := repositories.NewUserDb(db)
+	userService := core.NewUserService(userDb)
+	userHandler := handlers.NewUserHandler(userService)
+
+	// Recipe
 	recipeDb := repositories.NewRecipeDb(db)
 	recipeService := core.NewRecipeService(recipeDb)
 
-	// rJson, err := unMarshalRecipes("recipes.json")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// recipes := models.TranformRecipes(rJson)
+	market, _ := recipeService.FindClosestMarket(37.979259292519124, 23.771078249581826)
+	fmt.Println(market)
 
-	recipes := recipeService.GetRecipes()
-	for i, recipe := range recipes {
-		fmt.Println(recipe)
-		if i == 200 {
-			break
-		}
-	}
-	// server.Initialize()
-}
+	recipeHandler := handlers.NewRecipeHandler(recipeService)
 
-func unMarshalRecipes(file string) ([]models.RecipeJson, error) {
-	var recipes []models.RecipeJson
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(data, &recipes)
-	if err != nil {
-		return nil, err
-	}
+	// Search
+	searchService := core.NewSearchService(db)
+	searchHandler := handlers.NewSearchHandler(searchService)
 
-	return recipes, nil
+	server := server.NewService(recipeHandler, userHandler, searchHandler)
+
+	server.Initialize()
 }

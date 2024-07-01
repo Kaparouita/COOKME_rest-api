@@ -4,7 +4,7 @@ import "time"
 
 // MarketIngredient is a struct that contains the information of a recipe's ingredient
 // that is needed to be bought from a supermarket
-type MarketIngredient struct {
+type MarketIngredientTest struct {
 	Id          uint        `json:"ingridient_id" gorm:"primaryKey"`
 	CreatedAt   time.Time   `json:"create_at"`
 	Brand       string      `json:"brand"` //after
