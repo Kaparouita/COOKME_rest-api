@@ -44,6 +44,8 @@ func connectDb() (*gorm.DB, error) {
 	db.AutoMigrate(
 		&models.User{},
 		&models.Recipe{},
+		&models.Order{},
+		&models.Review{},
 		&models.Keyword{},
 		&models.MarketIngredient{},
 	)

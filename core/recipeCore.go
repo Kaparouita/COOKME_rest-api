@@ -1,12 +1,9 @@
 package core
 
 import (
-	"context"
 	"fmt"
 	"rest-api/models"
 	"rest-api/repositories"
-
-	"googlemaps.github.io/maps"
 )
 
 // RecipeService is a core service for recipes.
@@ -36,6 +33,17 @@ func (recipeService *RecipeService) SaveRecipe(recipe *models.Recipe) *models.Re
 func (recipeService *RecipeService) SaveRecipes(recipes []models.Recipe) *models.Response {
 	resp := &models.Response{StatusCode: 200}
 	if err := recipeService.DB.SaveRecipes(recipes); err != nil {
+		resp.StatusCode = 400
+		resp.Message = err.Error()
+		return resp
+	}
+	return resp
+}
+
+// DeleteRecipe deletes a recipe by its ID.
+func (recipeService *RecipeService) DeleteRecipe(id uint) *models.Response {
+	resp := &models.Response{StatusCode: 200}
+	if err := recipeService.DB.DeleteRecipe(id); err != nil {
 		resp.StatusCode = 400
 		resp.Message = err.Error()
 		return resp
@@ -79,170 +87,94 @@ func (recipeService *RecipeService) GetRecipesByKeywords(keywords string) []*mod
 	return recipes
 }
 
-func trimMarkets(markets []maps.PlacesSearchResult) []maps.PlacesSearchResult {
-	trimmedMarkets := make([]maps.PlacesSearchResult, 0)
-	for _, market := range markets {
-		if market.Name == "ΣΚΛΑΒΕΝΙΤΗΣ" || market.Name == "ΑΒ Βασιλόπουλος" || market.Name == "Lidl" || market.Name == "My market" {
-			trimmedMarkets = append(trimmedMarkets, market)
-		}
-	}
-	return trimmedMarkets
-}
-
-func (recipeService *RecipeService) SpecificClosestMarket(lan, lon float64, marketName string) (*models.Market, error) {
-	// Your Google Maps
-	apiKey := "AIzaSyCULKAWrNKbSkXtFx74rn80_sZpOlc4R7U"
-
-	// Initialize the client
-	client, err := maps.NewClient(maps.WithAPIKey(apiKey))
-	if err != nil {
-		return nil, fmt.Errorf("error creating the client: %s", err)
-	}
-
-	// Given location (latitude, longitude)
-	givenLocation := maps.LatLng{
-		Lat: lan,
-		Lng: lon,
-	}
-
-	// Find nearby markets
-	markets, err := findNearbyMarkets(client, givenLocation)
-	if err != nil {
-		return nil, fmt.Errorf("error finding nearby markets: %s", err)
-	}
-
-	// Trim the markets
-	markets = trimMarkets(markets)
-	specificMarkets := make([]maps.PlacesSearchResult, 0)
-
-	for _, market := range markets {
-		if market.Name == marketName {
-			specificMarkets = append(specificMarkets, market)
-		}
-	}
-
-	// Find the closest market
-	closestMarket, distance, err := findClosestMarket(client, givenLocation, specificMarkets)
-	if err != nil {
-		return nil, fmt.Errorf("error finding the closest market: %s", err)
-	}
-
-	return &models.Market{
-		Name:     closestMarket.Name,
-		Distance: distance,
-	}, nil
-}
-
-func (recipeService *RecipeService) CompareMarketPrices(recipe *models.Recipe) (*models.Market, error) {
-	marketIngredients := make(map[string]float64)
+func (recipeService *RecipeService) CompareMarketPrices(recipe *models.Recipe, availableMarkets []models.Market) (*models.Market, error) {
+	priceMap := make(map[string]float64)
+	uniqueMarkets := trimMarkets(availableMarkets)
 	for _, ingredient := range recipe.Ingredients {
-		marketIngredient := recipeService.DB.GetMarketIngredientForAllMarkets(ingredient)
-		if marketIngredient == nil {
+		marketIngredients := recipeService.DB.GetMarketIngredientForAllMarkets(ingredient)
+		if marketIngredients == nil {
 			return nil, fmt.Errorf("error finding market ingredients")
 		}
-		for _, market := range marketIngredient {
-			if val, ok := marketIngredients[market.Name]; ok {
-				marketIngredients[market.Name] = val + market.Price
-			} else {
-				marketIngredients[market.Name] = market.Price
+		for _, marketImarketIngredient := range marketIngredients {
+			if checkMatchingString(marketImarketIngredient.Market, uniqueMarkets) {
+				if val, ok := priceMap[marketImarketIngredient.Market]; ok {
+					priceMap[marketImarketIngredient.Market] = val + marketImarketIngredient.Price
+				} else {
+					priceMap[marketImarketIngredient.Market] = marketImarketIngredient.Price
+				}
 			}
 		}
 	}
 
-	return &models.Market{
-		Name:     "All Markets",
-		Prices:   marketIngredients,
-		Distance: 0,
-	}, nil
-	
+	minPrice := float64(-1)
+	minmarket := ""
+	for market, price := range priceMap {
+		if minPrice == -1 || price < minPrice {
+			minPrice = price
+			minmarket = market
+		}
+	}
+
+	for _, market := range uniqueMarkets {
+		if market.Name == minmarket {
+			return &market, nil
+		}
+	}
+
+	return nil, fmt.Errorf("error finding the closest market")
 }
 
-func (recipeService *RecipeService) AddMarketIngredientsFromFile(path, market string) error {
-
-func (recipeService *RecipeService) FindClosestMarket(lan, lon float64) (*models.Market, error) {
-	// Your Google Maps API key
-	apiKey := "AIzaSyCULKAWrNKbSkXtFx74rn80_sZpOlc4R7U"
-
-	// Initialize the client
-	client, err := maps.NewClient(maps.WithAPIKey(apiKey))
-	if err != nil {
-		return nil, fmt.Errorf("error creating the client: %s", err)
-	}
-
-	// Given location (latitude, longitude)
-	givenLocation := maps.LatLng{
-		Lat: lan,
-		Lng: lon,
-	}
-
-	// Find nearby markets
-	markets, err := findNearbyMarkets(client, givenLocation)
-	if err != nil {
-		return nil, fmt.Errorf("error finding nearby markets: %s", err)
-	}
-
-	// Trim the markets
-	markets = trimMarkets(markets)
-
-	// Find the closest market
-	closestMarket, distance, err := findClosestMarket(client, givenLocation, markets)
-	if err != nil {
-		return nil, fmt.Errorf("error finding the closest market: %s", err)
-	}
-
-	return &models.Market{
-		Name:     closestMarket.Name,
-		Distance: distance,
-	}, nil
-}
-
-func findNearbyMarkets(client *maps.Client, location maps.LatLng) ([]maps.PlacesSearchResult, error) {
-	// Search for nearby supermarkets 5 km around the given location and 20 results
-	r := &maps.NearbySearchRequest{
-		Location: &location,
-		Radius:   5000,          // Search within 5 km radius
-		Type:     "supermarket", // Type of place to search for
-		OpenNow:  true,          // Only search for places that are open no
-
-	}
-
-	resp, err := client.NearbySearch(context.Background(), r)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp.Results, nil
-}
-
-func findClosestMarket(client *maps.Client, origin maps.LatLng, markets []maps.PlacesSearchResult) (maps.PlacesSearchResult, float64, error) {
-	var closestMarket maps.PlacesSearchResult
-	minDistance := float64(-1)
-
+func trimMarkets(markets []models.Market) map[string]models.Market {
+	// Trim the markets also remove the duplicates
+	uniqueMarkets := make(map[string]models.Market)
 	for _, market := range markets {
-		destination := maps.LatLng{Lat: market.Geometry.Location.Lat, Lng: market.Geometry.Location.Lng}
-
-		r := &maps.DistanceMatrixRequest{
-			Origins:      []string{fmt.Sprintf("%f,%f", origin.Lat, origin.Lng)},
-			Destinations: []string{fmt.Sprintf("%f,%f", destination.Lat, destination.Lng)},
+		switch market.Name {
+		case "ΣΚΛΑΒΕΝΙΤΗΣ":
+			market.Name = "Sklavenitis"
+		case "ΑΒ Βασιλόπουλος":
+			market.Name = "AB"
+		case "Lidl":
+			market.Name = "Lidl"
+		case "My market":
+			market.Name = "MyMarket"
 		}
 
-		resp, err := client.DistanceMatrix(context.Background(), r)
-		if err != nil {
-			return maps.PlacesSearchResult{}, 0, err
-		}
-
-		// Get the distance in meters
-		distance := resp.Rows[0].Elements[0].Distance.Meters
-
-		fmt.Printf("Distance to %s: %d meters\n", market.Name, distance)
-
-		if minDistance == -1 || float64(distance) < minDistance {
-			minDistance = float64(distance)
-			closestMarket = market
+		if _, ok := uniqueMarkets[market.Name]; !ok {
+			uniqueMarkets[market.Name] = market
+		} else {
+			if uniqueMarkets[market.Name].Distance > market.Distance {
+				uniqueMarkets[market.Name] = market
+			}
 		}
 	}
 
-	return closestMarket, minDistance, nil
+	return uniqueMarkets
+}
+
+func checkMatchingString(str string, arr map[string]models.Market) bool {
+	fmt.Println("Checking for", str, "in", arr)
+	for key := range arr {
+		if key == str {
+			return true
+		}
+	}
+	return false
+}
+
+func (recipeService *RecipeService) ConvertRecipeToMarketIngredients(recipe *models.Recipe, market string) []models.MarketIngredient {
+	return recipeService.DB.GetMarketIngredientsForMarket(market, recipe)
+}
+
+func (s *RecipeService) AddDefaultMarkets() error {
+	markets := []string{"Sklavenitis", "AB", "Lidl", "MyMarket"}
+	marktesFiles := []string{"Sklavenitis_ingredients.txt", "AB_ingredients.txt", "Lidl_ingredients.txt", "MyMarket_ingredients.txt"}
+	for i, market := range markets {
+		err := s.DB.AddMarketIngredientsFromFile("SuperMarketPrices/"+marktesFiles[i], market)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ΣΚΛΑΒΕΝΙΤΗΣ

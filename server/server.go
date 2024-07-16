@@ -31,8 +31,13 @@ func (server *Server) Initialize() {
 	recipe := app.Group("/recipe")
 	recipe.Get("/cuisines", server.recipeHandler.GetRecipesByCousines)
 	recipe.Get("/keywords", server.recipeHandler.GetRecipesByKeywords)
+	recipe.Post("/convertToMarketIngredients/:recipeID", server.recipeHandler.ConvertRecipeToMarketIngredients)
+	recipe.Post("/compareMarketPrices/:recipeID", server.recipeHandler.CompareMarketPrices)
 	recipe.Get("/:id", server.recipeHandler.GetRecipe)
+	recipe.Delete("/:id", server.recipeHandler.DeleteRecipe)
 	recipe.Get("/", server.recipeHandler.GetRecipes)
+	recipe.Post("/recipes", server.recipeHandler.SaveRecipes)
+	recipe.Post("/", server.recipeHandler.SaveRecipe)
 
 	//search
 	search := app.Group("/search")
@@ -41,10 +46,34 @@ func (server *Server) Initialize() {
 
 	//users
 	user := app.Group("/user")
-	user.Get("/email/:email", server.userHandler.GetUserByEmail) // Define the email route first to avoid conflicts
-	user.Post("/login", server.userHandler.CheckLogin)
+	user.Get("/email/:email", server.userHandler.GetUserByEmail)
+	user.Get("/all", server.userHandler.GetUsers)
 	user.Get("/:id", server.userHandler.GetUser)
+	user.Delete("/:id", server.userHandler.DeleteUser)
 	user.Post("/", server.userHandler.CreateUser)
+	user.Get("/profileRecipes/:userId", server.userHandler.GetProfileRecipes)
+
+	//extra
+	user.Get("/closestMarket/:userId", server.userHandler.FindClosestMarket)
+	user.Get("/availableMarkets/:userId", server.userHandler.FindAllAvailableMarkets)
+	user.Post("/login", server.userHandler.CheckLogin)
+
+	//reviews
+	user.Post("/addReview", server.userHandler.AddReview)
+	user.Put("/updateReview", server.userHandler.UpdateReview)
+	user.Get("/reviews/:userId", server.userHandler.GetReviewsByUserID)
+
+	//favorites
+	user.Post("/addFavoriteRecipe/:userId/:recipeId", server.userHandler.AddFavoriteRecipe)
+	user.Delete("/removeFavoriteRecipe/:userId/:recipeId", server.userHandler.RemoveFavoriteRecipe)
+	user.Get("/favoriteRecipes/:userId", server.userHandler.GetFavoriteRecipes)
+
+	//orders
+	order := app.Group("/order")
+	order.Get("/all", server.userHandler.GetOrders)
+	order.Get("/:userId", server.userHandler.GetOrdersByUserID)
+	order.Delete("/:recipeId/:userId", server.userHandler.RemoveOrder)
+	order.Post("/", server.userHandler.SaveOrder)
 
 	log.Fatal(app.Listen(":3000"))
 

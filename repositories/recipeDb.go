@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"rest-api/models"
+	"strconv"
 	"strings"
 )
 
@@ -45,6 +46,10 @@ func (db *RecipeDb) GetRecipe(id uint) *models.Recipe {
 	}
 	recipe.UnmarshalNutritionInfo()
 	return &recipe
+}
+
+func (db *RecipeDb) DeleteRecipe(id uint) error {
+	return db.Db.Delete(&models.Recipe{}, id).Error
 }
 
 func (db *RecipeDb) GetRecipes() []*models.Recipe {
@@ -127,9 +132,13 @@ func (db *RecipeDb) AddMarketIngredientsFromFile(path, market string) error {
 		if len(parts) != 2 {
 			continue
 		}
+		price, err := strconv.ParseFloat(parts[1], 64)
+		if err != nil {
+			return err
+		}
 		ingredient := models.MarketIngredient{
 			Name:   parts[0],
-			Price:  parts[1],
+			Price:  price,
 			Market: market,
 		}
 		// Insert the ingredient
@@ -140,4 +149,14 @@ func (db *RecipeDb) AddMarketIngredientsFromFile(path, market string) error {
 		return err
 	}
 	return nil
+}
+
+func (db *RecipeDb) GetMarketIngredientsForMarket(market string, recipe *models.Recipe) []models.MarketIngredient {
+	var marketIngredients []models.MarketIngredient
+	for _, ingredient := range recipe.Ingredients {
+		var marketIngredient models.MarketIngredient
+		db.Db.Where("name = ? AND market = ?", ingredient, market).First(&marketIngredient)
+		marketIngredients = append(marketIngredients, marketIngredient)
+	}
+	return marketIngredients
 }

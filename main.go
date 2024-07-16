@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"rest-api/core"
 	"rest-api/handlers"
@@ -27,10 +26,6 @@ func main() {
 	// Recipe
 	recipeDb := repositories.NewRecipeDb(db)
 	recipeService := core.NewRecipeService(recipeDb)
-
-	market, _ := recipeService.FindClosestMarket(37.979259292519124, 23.771078249581826)
-	fmt.Println(market)
-
 	recipeHandler := handlers.NewRecipeHandler(recipeService)
 
 	// Search

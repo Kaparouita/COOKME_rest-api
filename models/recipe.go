@@ -61,11 +61,23 @@ type Recipe struct {
 	NutritionInfo datatypes.JSON `gorm:"type:jsonb" json:"nutrition_info,omitempty"`
 	Ingredients   pq.StringArray `json:"ingredients,omitempty" gorm:"type:varchar[]"`
 	Courses       pq.StringArray `json:"courses,omitempty" gorm:"type:varchar[]"`
-	Cuisine       string         `json:"cusine"`
+	Cuisine       string         `json:"cuisine"`
 	SkillLevel    string         `json:"skill_level"`
 	PostDates     string         `json:"post_dates"`
-	Title         string         `json:"title"`
+	Title         string         `json:"title" gorm:"uniqueIndex"`
+	Price         float64        `json:"price"`
+	OrderStatus   string         `json:"order_status"`
 	Image         string         `json:"image"`
+}
+
+type NutritionInfo struct {
+	SaturatedFat float64 `json:"saturated_fat" xml:"saturated_fat"`
+	Protein      float64 `json:"protein" xml:"protein"`
+	Fat          float64 `json:"fat" xml:"fat"`
+	Kcal         float64 `json:"kcal" xml:"kcal"`
+	AddedSugar   float64 `json:"added_sugar" xml:"added_sugar"`
+	Carbohydrate float64 `json:"carbohydrate" xml:"carbohydrate"`
+	Salt         float64 `json:"salt" xml:"salt"`
 }
 
 func (r *RecipeJson) TranformToRecipe() *Recipe {

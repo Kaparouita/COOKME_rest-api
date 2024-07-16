@@ -5,9 +5,12 @@ go 1.21
 toolchain go1.22.4
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.0
+	github.com/elastic/go-elasticsearch/v8 v8.14.0
+	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
+	googlemaps.github.io/maps v1.7.0
+	gorm.io/datatypes v1.2.0
 	gorm.io/driver/postgres v1.5.6
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
 )
@@ -15,7 +18,6 @@ require (
 require (
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/elastic/elastic-transport-go/v8 v8.6.0 // indirect
-	github.com/elastic/go-elasticsearch/v8 v8.14.0 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
@@ -41,7 +43,5 @@ require (
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	googlemaps.github.io/maps v1.7.0 // indirect
-	gorm.io/datatypes v1.2.0 // indirect
 	gorm.io/driver/mysql v1.4.7 // indirect
 )

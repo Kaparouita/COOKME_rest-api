@@ -32,7 +32,7 @@ func (recipeHandler *RecipeHandler) SaveRecipe(c *fiber.Ctx) error {
 		return c.Status(resp.StatusCode).JSON(resp.Message)
 	}
 
-	return c.Status(resp.StatusCode).JSON("Saved Successfully")
+	return c.Status(resp.StatusCode).JSON(resp)
 }
 
 func (recipeHandler *RecipeHandler) SaveRecipes(c *fiber.Ctx) error {
@@ -46,7 +46,20 @@ func (recipeHandler *RecipeHandler) SaveRecipes(c *fiber.Ctx) error {
 		return c.Status(resp.StatusCode).JSON(resp.Message)
 	}
 
-	return c.Status(resp.StatusCode).JSON("Saved Successfully")
+	return c.Status(resp.StatusCode).JSON(resp)
+}
+
+func (recipeHandler *RecipeHandler) DeleteRecipe(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON("Invalid ID")
+	}
+	resp := recipeHandler.srv.DeleteRecipe(uint(id))
+	if resp.StatusCode != 200 {
+		return c.Status(resp.StatusCode).JSON(resp.Message)
+	}
+
+	return c.Status(resp.StatusCode).JSON(resp)
 }
 
 // GetRecipes returns all recipes from the database.
@@ -97,24 +110,50 @@ func (recipeHandler *RecipeHandler) GetRecipesByKeywords(c *fiber.Ctx) error {
 	return c.Status(200).JSON(recipes)
 }
 
-func (recipeHandler *RecipeHandler) FindClosestMarket(c *fiber.Ctx) error {
-	lanStr := c.Params("lan")
-	lonStr := c.Params("lon")
-	lan, err := strconv.ParseFloat(lanStr, 64)
+func (recipeHandler *RecipeHandler) CompareMarketPrices(c *fiber.Ctx) error {
+	recipeID, err := strconv.Atoi(c.Params("recipeID"))
 	if err != nil {
-		return c.Status(400).JSON("Invalid lan")
+		return c.Status(fiber.StatusBadRequest).JSON("Invalid ID")
 	}
-	lon, err := strconv.ParseFloat(lonStr, 64)
-	if err != nil {
-		return c.Status(400).JSON("Invalid lon")
-	}
-	//unmarshal the request body (recipe)
-	recipe := &models.Recipe{}
-	err = json.Unmarshal(c.Body(), &recipe)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON("Unable to unmarshal Recipe")
-	}
-	recipeResponse := &models.RecipeResponse{}
-	market, err := recipeHandler.srv.FindClosestMarket(lan, lon)
 
+	recipe := recipeHandler.srv.GetRecipe(uint(recipeID))
+	if recipe == nil {
+		return c.Status(fiber.StatusNotFound).JSON("Recipe not found")
+	}
+
+	// unmashal the markets
+	markets := []models.Market{}
+	err = json.Unmarshal(c.Body(), &markets)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON("Unable to unmarshal Markets")
+	}
+
+	market, err := recipeHandler.srv.CompareMarketPrices(recipe, markets)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON("Error comparing market prices")
+	}
+
+	return c.Status(200).JSON(market)
+}
+
+func (recipeHandler *RecipeHandler) ConvertRecipeToMarketIngredients(c *fiber.Ctx) error {
+	recipeID, err := strconv.Atoi(c.Params("recipeID"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON("Invalid ID")
+	}
+
+	market := c.Query("market")
+	if market == "" {
+		return c.Status(fiber.StatusBadRequest).JSON("Invalid market")
+	}
+
+	recipe := recipeHandler.srv.GetRecipe(uint(recipeID))
+	if recipe == nil {
+		return c.Status(fiber.StatusNotFound).JSON("Recipe not found")
+	}
+
+	marketIngredients := recipeHandler.srv.ConvertRecipeToMarketIngredients(recipe, market)
+
+	return c.Status(200).JSON(marketIngredients)
 }
