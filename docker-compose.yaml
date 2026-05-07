@@ -3,7 +3,7 @@ version: '3.1'
 services:
 
   db:
-    image: 'postgres:latest'
+    image: 'postgres:16'
     container_name: 'cookme-postgres'
     restart: always
     ports:
@@ -12,6 +12,23 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS} 
       POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./backup.sql:/docker-entrypoint-initdb.d/backup.sql:ro
+
+  elasticsearch:
+    image: 'docker.elastic.co/elasticsearch/elasticsearch:8.13.4'
+    container_name: 'cookme-elasticsearch'
+    restart: always
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
 
 volumes:
   dbdata:
+  esdata:
